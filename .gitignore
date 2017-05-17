@@ -1,0 +1,11 @@
+.DS_Store
+/.build
+/Packages
+/*.xcodeproj
+Vagrantfile
+.vagrant
+_hexaville_app
+.routing-manifest.json
+Hexavillefile.yml
+__docker_shared
+lambda-package.zip
