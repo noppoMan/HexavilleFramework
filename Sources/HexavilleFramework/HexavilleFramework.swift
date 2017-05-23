@@ -162,10 +162,10 @@ class GenerateRoutingManifestCommand: Command {
 
 class ExecuteCommand: Command {
     let name = "execute"
-    let shortDescription = "Execute specieid the route"
+    let shortDescription = "Execute the specified resource ex. execute GET /"
     let method = Parameter()
     let path = Parameter()
-    let header = Key<String>("--header", usage: "query string formated header string ex. Content-Type=application/json&Content-Length=100")
+    let header = Key<String>("--header", usage: "query string formated header string ex. Content-Type=application/json&Accept=application/json")
     let body = Key<String>("--body", usage: "body string")
     
     
