@@ -98,13 +98,36 @@ app.use(.get, [FooMiddleware()], "/foo") { request, context in
 }
 ```
 
+## Error handling
+
+You can catch all of the errors that are throwed in the session with `catch` error handler.
+In the catch closure, the best way of the determining error response is pattern matching for the `Error`.
+
+```swift
+let app = HexavilleFramework()
+
+app.use(.....)
+
+app.catch { error in
+    switch error {
+    case FooError.notFound:
+        return Response(status: .notFound)
+    case JWTAuthenticationMiddleware.authrozationHeaderIsMissing:
+        return Response(status: .unauthorized)
+    default:
+        return Response(status: .internalServerError)
+    }
+}
+
+try app.run()
+```
 
 ## How to deploy?
 See the Hexaville [Documentation](https://github.com/noppoMan/Hexaville)
 
 ## Debug with Builtin Web Server
 
-You can debug your application with the builtin web server with `serve` command
+You can debug your application with the builtin web server with `serve` command.
 
 ```sh
 YourApplication/.build/debug/YourApplication serve
