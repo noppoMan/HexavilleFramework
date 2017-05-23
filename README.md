@@ -4,7 +4,7 @@ This is Application Framework Layer for [Hexaville](https://github.com/noppoMan/
 All Hexaville applications should be written in this framework.
 
 
-### Usage
+## Usage
 
 ```swift
 import HexavilleFramework
@@ -25,10 +25,67 @@ app.use(router)
 try app.run()
 ```
 
-### How to deploy?
-See the Hexaville Documentation
+## Routing
 
-### Debug with Builtin Web Server
+### Basic Routing
+
+```swift
+let app = HexavilleFramework()
+
+let router = Router()
+
+router.use(.get, "/hello") { response, context in
+    return Response(body: "Hello")
+}
+
+app.use(router)
+```
+
+### Routing with Middleware
+
+```swift
+let app = HexavilleFramework()
+
+let router = Router()
+
+router.use(.get, [RandomNumberGenerateMiddleware()], "/hello") { response, context in
+    return Response(body: "Random number is \(context["randomNumber"])")
+}
+
+app.use(router)
+```
+
+## Middleware
+
+You can create your own Middlewares to confirm `Middleware` protocol.
+
+```swift
+enum JWTAuthenticationMiddleware {
+    case authrozationHeaderIsMissing
+}
+
+struct JWTAuthenticationMiddleware: Middleware {
+    func respond(to request: Request, context: ApplicationContext) throws -> Chainer {
+        guard let jwtString = request.headers["Authorization"] else {
+            throw JWTAuthenticationMiddleware.authrozationHeaderIsMissing
+        }
+        
+        let jwt = try JWT.decode(jwtString)
+        
+        context.storage["JWT"] = jwt
+        
+        return .next(request)
+    }
+}
+
+app.use(JWTAuthenticationMiddleware())
+```
+
+
+## How to deploy?
+See the Hexaville [Documentation](https://github.com/noppoMan/Hexaville)
+
+## Debug with Builtin Web Server
 
 You can debug your application with the builtin web server with `serve` command
 
