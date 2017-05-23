@@ -81,6 +81,23 @@ struct JWTAuthenticationMiddleware: Middleware {
 app.use(JWTAuthenticationMiddleware())
 ```
 
+## ApplicationContext
+
+Context is the shared storage for the request. 
+
+```swift
+struct FooMiddleware: Middleware {
+    func respond(to request: Request, context: ApplicationContext) throws -> Chainer {
+        context.storage["Foo"] = "Bar"
+        return .next(request)
+    }
+}
+
+app.use(.get, [FooMiddleware()], "/foo") { request, context in
+    print(context["Foo"]) // Bar
+}
+```
+
 
 ## How to deploy?
 See the Hexaville [Documentation](https://github.com/noppoMan/Hexaville)
