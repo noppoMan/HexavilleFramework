@@ -9,7 +9,7 @@
 import Foundation
 
 extension Body {
-    func asData() -> Data {
+    public func asData() -> Data {
         switch self {
         case .buffer(let data):
             return data
