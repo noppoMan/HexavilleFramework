@@ -7,7 +7,9 @@ public class HexavilleFramework {
     
     var middlewares: [Middleware] = []
     
-    var catchHandler: ((Error) throws -> Response)?
+    var catchHandler: (Error) -> Response = { error in
+        return Response(status: .internalServerError, body: "\(error)".data)
+    }
     
     var logger: Logger = StandardOutputLogger()
 
@@ -23,7 +25,7 @@ extension HexavilleFramework {
         routers.append(router)
     }
     
-    public func `catch`(_ handler: @escaping (Error) throws -> Response) {
+    public func `catch`(_ handler: @escaping (Error) -> Response) {
         self.catchHandler = handler
     }
     
@@ -61,10 +63,10 @@ extension HexavilleFramework {
                 }
             }
         } catch {
-            return Response(status: .internalServerError, body: .buffer("\(error)".data))
+            return self.catchHandler(error)
         }
         
-        return Response(status: .notFound)
+        return Response(status: .notFound, body: "\(request.path ?? "/") is not found")
     }
     
     func generateRoutingManifest() throws -> Data {
@@ -197,7 +199,7 @@ class ExecuteCommand: Command {
         formatter.dateFormat = "yyyy-MM-dd hh:mm:ss"
         let requestData = formatter.string(from: Date())
         
-        application.logger.log(level: .info, message: "[\(requestData)] \(method.value.uppercased()) \(path.value) --header \(header.value ?? "") --body \(self.body.value ?? "")")
+        application.logger.log(level: .info, message: "[\(requestData)] \(method.value.uppercased()) \(path.value) --header \(header.value ?? "") --body \(self.body.value ?? "") \(response.statusCode)")
         
         print("hexaville response format/json")
         print("\t")
@@ -205,7 +207,7 @@ class ExecuteCommand: Command {
             let data = try JSONSerialization.data(withJSONObject: output, options: [.prettyPrinted])
             print(String(data: data, encoding: .utf8) ?? "")
         } catch {
-            print("{\"statusCode: 500, \"headers\": {\"Content-Type\": \"application/json\"}, body: \"\(error)\"")
+            print("{\"statusCode: 500, \"headers\": {\"Content-Type\": \"text/plain\"}, body: \"\(error)\"")
         }
         print("\t")
         print("\t")
