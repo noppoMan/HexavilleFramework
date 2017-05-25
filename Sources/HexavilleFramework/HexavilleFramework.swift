@@ -189,11 +189,20 @@ class ExecuteCommand: Command {
             headerDictionary[$0.key.description] = $0.value
         }
         
-        let output: [String: Any] = [
+        var output: [String: Any] = [
             "statusCode": response.status.statusCode,
             "headers": headerDictionary,
             "body": String(data: response.body.asData(), encoding: .utf8) ?? ""
         ]
+        
+        if let contentType = response.contentType {
+            switch (contentType.type, contentType.subtype) {
+            case ("image", _), ("application", "x-protobuf"), ("application", "x-google-protobuf"), ("application", "octet-stream"):
+                output["isBase64Encoded"] = true
+            default:
+                break
+            }
+        }
         
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd hh:mm:ss"
