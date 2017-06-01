@@ -58,20 +58,20 @@ extension HexavilleFramework {
             switch chainer {
             case .respond(to: let response):
                 var response = response
-                for (key, value) in context.storageForResponseHeaders {
+                for (key, value) in context.responseHeaders {
                     response.headers[key] = value
                 }
-                request.session?.write()
+                context.session?.write()
                 return response
                 
             case .next(let request):
                 for router in routers {
                     if let (route, request) = router.matched(for: request) {
                         var response = try route.respond(request, context)
-                        for (key, value) in context.storageForResponseHeaders {
+                        for (key, value) in context.responseHeaders {
                             response.headers[key] = value
                         }
-                        request.session?.write()
+                        context.session?.write()
                         return response
                     }
                 }

@@ -9,8 +9,9 @@
 import Foundation
 
 public class ApplicationContext {
-    public var storage: [String: Any] = [:]
-    public var storageForResponseHeaders: Headers = [:]
+    public var memory: [String: Any] = [:]
+    public var session: Session?
+    public var responseHeaders: Headers = [:]
     public init() {}
 }
 

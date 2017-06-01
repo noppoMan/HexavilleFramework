@@ -48,7 +48,7 @@ public final class SessionMiddleware: Middleware {
         
         guard let cookie = request.cookies.filter({ $0.name == cookieAttribute.key }).first else {
             let id = Session.generateId()
-            context.storageForResponseHeaders["Set-Cookie"] = generateCookie(withSessionId: id).description
+            context.responseHeaders["Set-Cookie"] = generateCookie(withSessionId: id).description
             return .next(request)
         }
         
@@ -57,7 +57,7 @@ public final class SessionMiddleware: Middleware {
             if let values = try store.read(forKey: session.id) {
                 session.storage = values
             }
-            request.session = session
+            context.session = session
         } catch {
             print("Session was failed to read. reason: \(error)")
         }
@@ -82,18 +82,5 @@ public final class SessionMiddleware: Middleware {
             secure: cookieAttribute.secure,
             httpOnly: cookieAttribute.httpOnly
         )
-    }
-}
-
-
-extension Request {
-    public var session: Session? {
-        get {
-            return self.storage["hexaville.session"] as? Session
-        }
-        
-        set {
-            self.storage["hexaville.session"] = newValue
-        }
     }
 }
