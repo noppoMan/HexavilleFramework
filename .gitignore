@@ -9,3 +9,4 @@ _hexaville_app
 Hexavillefile.yml
 __docker_shared
 lambda-package.zip
+.env

@@ -12,11 +12,15 @@ public class HexavilleFramework {
     }
     
     var logger: Logger = StandardOutputLogger()
-
+    
     public init() {}
 }
 
 extension HexavilleFramework {
+    public func use(_ middleware: @escaping (Request, ApplicationContext) throws -> Chainer ) {
+        self.middlewares.append(BasicMiddleware(handler: middleware))
+    }
+    
     public func use(_ middleware: Middleware) {
         self.middlewares.append(middleware)
     }
@@ -53,12 +57,22 @@ extension HexavilleFramework {
             let chainer = try middlewares.chain(request, context: context)
             switch chainer {
             case .respond(to: let response):
+                var response = response
+                for (key, value) in context.storageForResponseHeaders {
+                    response.headers[key] = value
+                }
+                request.session?.write()
                 return response
                 
             case .next(let request):
                 for router in routers {
                     if let (route, request) = router.matched(for: request) {
-                        return try route.respond(request, context)
+                        var response = try route.respond(request, context)
+                        for (key, value) in context.storageForResponseHeaders {
+                            response.headers[key] = value
+                        }
+                        request.session?.write()
+                        return response
                     }
                 }
             }
@@ -87,14 +101,14 @@ extension HexavilleFramework {
         ]
         return try JSONSerialization.data(withJSONObject: manifest, options: [.prettyPrinted])
     }
-
+    
     public func run() throws {
         CLI.setup(name: "hexavillefw")
         CLI.register(commands: [
             GenerateRoutingManifestCommand(application: self),
             ExecuteCommand(application: self),
             ServeCommand(application: self)
-        ])
+            ])
         _ = CLI.go()
     }
 }

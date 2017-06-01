@@ -52,6 +52,19 @@ let router = Router()
 
 app.use(RandomNumberGenerateMiddleware())
 
+let sessionMiddleware = SessionMiddleware(
+    cookieAttribute: CookieAttribute(
+        expiration: 3600,
+        httpOnly: true,
+        secure: false,
+        domain: nil,
+        path: nil
+    ),
+    store: SessionMemoryStore()
+)
+
+app.use(sessionMiddleware)
+
 router.use(.get, "/") { request, context in
     let html = "<html><head><title>Hexaville</title></head><body>Welcome to Hexaville!</body></html>"
     return Response(headers: ["Content-Type": "text/html"], body: html)
