@@ -8,10 +8,6 @@
 
 import Foundation
 
-func errorMessageForSession(_ error: Error) {
-    print("Session was failed to write. reason: \(error)")
-}
-
 public final class Session {
     
     public let id: String
@@ -32,7 +28,7 @@ public final class Session {
         do {
             try self.store.flush()
         } catch {
-            errorMessageForSession(error)
+            print("Session was failed to flush. reason: \(error)")
         }
     }
     
@@ -49,7 +45,7 @@ public final class Session {
         do {
             try self.store.write(value: storage, forKey: id, ttl: ttl)
         } catch {
-            errorMessageForSession(error)
+            print("Session was failed to write. reason: \(error)")
         }
     }
 }

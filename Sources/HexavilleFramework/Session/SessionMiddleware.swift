@@ -59,7 +59,7 @@ public final class SessionMiddleware: Middleware {
             }
             request.session = session
         } catch {
-            errorMessageForSession(error)
+            print("Session was failed to read. reason: \(error)")
         }
         
         return .next(request)
