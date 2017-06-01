@@ -72,7 +72,7 @@ struct JWTAuthenticationMiddleware: Middleware {
         
         let jwt = try JWT.decode(jwtString)
         
-        context.storage["JWT"] = jwt
+        context.memory["JWT"] = jwt
         
         return .next(request)
     }
@@ -83,12 +83,12 @@ app.use(JWTAuthenticationMiddleware())
 
 ## ApplicationContext
 
-Context is the shared storage for the request. 
+Context is the shared memory/storage for the request. 
 
 ```swift
 struct FooMiddleware: Middleware {
     func respond(to request: Request, context: ApplicationContext) throws -> Chainer {
-        context.storage["Foo"] = "Bar"
+        context.memory["Foo"] = "Bar"
         return .next(request)
     }
 }
