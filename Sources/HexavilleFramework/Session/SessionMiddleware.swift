@@ -48,6 +48,7 @@ public final class SessionMiddleware: Middleware {
         
         guard let cookie = request.cookies.filter({ $0.name == cookieAttribute.key }).first else {
             let id = Session.generateId()
+            context.session = Session(id: id, store: store, ttl: cookieAttribute.expiration)
             context.responseHeaders["Set-Cookie"] = generateCookie(withSessionId: id).description
             return .next(request)
         }
