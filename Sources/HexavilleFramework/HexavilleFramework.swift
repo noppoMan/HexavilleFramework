@@ -37,8 +37,8 @@ extension HexavilleFramework {
         var headers: Headers = [:]
         header.components(separatedBy: "&").forEach {
             if $0.isEmpty { return }
-            let splited = $0.components(separatedBy: "=")
-            headers[splited[0]] = splited[1]
+            var splited = $0.components(separatedBy: "=")
+            headers[splited.removeFirst()] = splited.joined(separator: "=")
         }
         
         let request = Request(
