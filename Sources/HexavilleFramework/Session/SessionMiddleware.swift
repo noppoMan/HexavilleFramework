@@ -56,10 +56,10 @@ public final class SessionMiddleware: Middleware {
         for cookie in cookies {
             do {
                 let session = Session(id: cookie.value, store: store, ttl: cookieAttribute.expiration)
+                context.session = session
                 if let values = try store.read(forKey: session.id) {
                     session.storage = values
                 }
-                context.session = session
                 break
             } catch {
                 //print("Session was failed to read. reason: \(error)")
