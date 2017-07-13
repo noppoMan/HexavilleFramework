@@ -49,6 +49,7 @@ public final class SessionMiddleware: Middleware {
         let cookies = request.cookies.filter({ $0.name == cookieAttribute.key })
         if cookies.count == 0 {
             let id = Session.generateId()
+            context.session = Session(id: id, store: store, ttl: cookieAttribute.expiration)
             context.responseHeaders["Set-Cookie"] = generateCookie(withSessionId: id).description
             return .next(request)
         }
@@ -57,6 +58,7 @@ public final class SessionMiddleware: Middleware {
             do {
                 let session = Session(id: cookie.value, store: store, ttl: cookieAttribute.expiration)
                 context.session = session
+                
                 if let values = try store.read(forKey: session.id) {
                     session.storage = values
                 }
