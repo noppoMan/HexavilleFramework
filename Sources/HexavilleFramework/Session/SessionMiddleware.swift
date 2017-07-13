@@ -46,21 +46,24 @@ public final class SessionMiddleware: Middleware {
     public func respond(to request: Request, context: ApplicationContext) throws -> Chainer {
         var request = request
         
-        guard let cookie = request.cookies.filter({ $0.name == cookieAttribute.key }).first else {
+        let cookies = request.cookies.filter({ $0.name == cookieAttribute.key })
+        if cookies.count == 0 {
             let id = Session.generateId()
-            context.session = Session(id: id, store: store, ttl: cookieAttribute.expiration)
             context.responseHeaders["Set-Cookie"] = generateCookie(withSessionId: id).description
             return .next(request)
         }
         
-        do {
-            let session = Session(id: cookie.value, store: store, ttl: cookieAttribute.expiration)
-            context.session = session
-            if let values = try store.read(forKey: session.id) {
-                session.storage = values
+        for cookie in cookies {
+            do {
+                let session = Session(id: cookie.value, store: store, ttl: cookieAttribute.expiration)
+                if let values = try store.read(forKey: session.id) {
+                    session.storage = values
+                }
+                context.session = session
+                break
+            } catch {
+                //print("Session was failed to read. reason: \(error)")
             }
-        } catch {
-            print("Session was failed to read. reason: \(error)")
         }
         
         return .next(request)
