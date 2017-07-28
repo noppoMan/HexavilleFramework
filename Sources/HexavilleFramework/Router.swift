@@ -35,12 +35,16 @@ extension Route {
         return components.joined(separator: "/")
     }
     
-    func match(with requestedPath: String) -> (Bool, [String: String]?) {
+    #if os(Linux) && !swift(>=3.2)
+        typealias NSTextCheckingResult = TextCheckingResult
+    #endif
+    
+    func match(with urlPath: String) -> (Bool, [String: String]?) {
         guard let regexp = self.regexp else {
-            return (self.path == requestedPath, nil)
+            return (self.path == urlPath, nil)
         }
         
-        let results = regexp.matches(in: requestedPath, options: [], range: NSMakeRange(0, requestedPath.characters.count))
+        let results = regexp.matches(in: urlPath, options: [], range: NSMakeRange(0, urlPath.characters.count))
         
         guard let result = results.first else { return (false, nil) }
         
@@ -48,16 +52,30 @@ extension Route {
             return (false, nil)
         }
         
+        return (true, getParams(fromUrlPath: urlPath, match: result))
+    }
+    
+    func getParams(fromUrlPath urlPath: String, match: NSTextCheckingResult) -> [String: String] {
         var params: [String: String] = [:]
         
-        for (offset, element) in paramKeys.enumerated() {
-            if let range = Range<String.Index>(result.rangeAt(offset+1), in: requestedPath) {
-                params[element] = requestedPath.substring(with: range)
+        for index in 0..<paramKeys.count {
+            #if os(Linux)
+                let matchRange = match.range(at: index+1)
+            #else
+                let matchRange = match.rangeAt(index+1)
+            #endif
+            if  matchRange.location != NSNotFound  && matchRange.location != -1  {
+                var parameter = NSString(string: urlPath).substring(with: matchRange)
+                if let decodedParameter = parameter.removingPercentEncoding {
+                    parameter = decodedParameter
+                }
+                params[paramKeys[index]] = parameter
             }
         }
         
-        return (true, params)
+        return params
     }
+    
 }
 
 struct BasicRoute: Route {
