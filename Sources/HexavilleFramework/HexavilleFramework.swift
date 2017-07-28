@@ -90,7 +90,7 @@ extension HexavilleFramework {
         
         for route in routes {
             let routeManifest = [
-                "path": route.path,
+                "path": route.apiGatewayStylePath(),
                 "method": "\(route.method)"
             ]
             routingManifest.append(routeManifest)

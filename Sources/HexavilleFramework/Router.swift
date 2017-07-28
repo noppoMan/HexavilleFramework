@@ -12,7 +12,7 @@ public typealias Respond = (Request, ApplicationContext) throws -> Response
 
 public protocol Route {
     var path: String { get }
-    var regexp: Regex { get }
+    var regexp: NSRegularExpression? { get }
     var paramKeys: [String] { get }
     var method: Request.Method { get }
     var handler: Respond { get }
@@ -22,39 +22,59 @@ public protocol Route {
 }
 
 extension Route {
-    public func params(_ request: Request) -> [String: String] {
-        guard let path = request.path else {
-            return [:]
+    func apiGatewayStylePath() -> String {
+        var components = path.components(separatedBy: "/")
+        for (offset, element) in components.enumerated() {
+            if element.isEmpty { continue }
+            let headChar = element.substring(with: element.startIndex..<element.index(element.startIndex, offsetBy: 1))
+            if headChar == ":" {
+                let paramKey = element.substring(with: element.index(element.startIndex, offsetBy: 1)..<element.endIndex)
+                components[offset] = "{\(paramKey)}"
+            }
+        }
+        return components.joined(separator: "/")
+    }
+    
+    func match(with requestedPath: String) -> (Bool, [String: String]?) {
+        guard let regexp = self.regexp else {
+            return (self.path == requestedPath, nil)
         }
         
-        var parameters: [String: String] = [:]
+        let results = regexp.matches(in: requestedPath, options: [], range: NSMakeRange(0, requestedPath.characters.count))
         
-        let values = regexp.groups(path)
+        guard let result = results.first else { return (false, nil) }
         
-        for (index, key) in paramKeys.enumerated() {
-            parameters[key] = values[index]
+        if paramKeys.count == 0 {
+            return (false, nil)
         }
         
-        return parameters
+        var params: [String: String] = [:]
+        
+        for (offset, element) in paramKeys.enumerated() {
+            if let range = Range<String.Index>(result.rangeAt(offset+1), in: requestedPath) {
+                params[element] = requestedPath.substring(with: range)
+            }
+        }
+        
+        return (true, params)
     }
 }
 
 struct BasicRoute: Route {
     let path: String
-    let regexp: Regex
+    let regexp: NSRegularExpression?
     let method: Request.Method
     let handler: Respond
     let paramKeys: [String]
     let middlewares: [Middleware]
     
     init(method: Request.Method, path: String, middlewares: [Middleware] = [], handler: @escaping Respond){
-        let parameterRegularExpression = try! Regex(pattern: "\\{([[:alnum:]_]+)\\}")
-        let pattern = parameterRegularExpression.replace(path, withTemplate: "([[:alnum:]_-]+)")
         
+        let (regex, _, strings) = RouteRegex.sharedInstance.buildRegex(fromPattern: path, allowPartialMatch: false)
         self.method = method
         self.path = path
-        self.regexp = try! Regex(pattern: "^" + pattern + "$")
-        self.paramKeys = parameterRegularExpression.groups(path)
+        self.regexp = regex
+        self.paramKeys = strings ?? []
         self.middlewares = middlewares
         self.handler = handler
     }
@@ -84,9 +104,10 @@ public class Router {
         let path = request.path ?? "/"
         
         for route in routes {
-            if route.regexp.matches(path) && request.method == route.method {
+            let (matched, pamras) = route.match(with: path)
+            if matched && request.method == route.method {
                 var request = request
-                request.params = route.params(request)
+                request.params = pamras
                 return (route, request)
             }
         }
@@ -94,3 +115,4 @@ public class Router {
         return nil
     }
 }
+
