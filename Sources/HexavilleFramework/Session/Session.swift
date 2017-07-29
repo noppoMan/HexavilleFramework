@@ -24,11 +24,12 @@ public final class Session {
         self.ttl = ttl
     }
     
-    public func flush() {
+    public func destroy() {
         do {
-            try self.store.flush()
+            try self.store.delete(forKey: id)
+            storage.removeAll()
         } catch {
-            print("Session was failed to flush. reason: \(error)")
+            print("Session was failed to destroy. reason: \(error)")
         }
     }
     
@@ -42,6 +43,7 @@ public final class Session {
     }
     
     func write() {
+        if storage.isEmpty { return }
         do {
             try self.store.write(value: storage, forKey: id, ttl: ttl)
         } catch {
