@@ -16,8 +16,8 @@ app.use(RandomNumberGenerateMiddleware())
 let router = Router()
 
 router.use(.get, "/") { request, context in
-    let str = "<html><head><title>Hexaville</title></head><body>Welcome to Hexaville!</body></html>"
-    return Response(headers: ["Content-Type": "text/html"], body: .buffer(str.data))
+    let htmlString = "<html><head><title>Hexaville</title></head><body>Welcome to Hexaville!</body></html>"
+    return Response(headers: ["Content-Type": "text/html"], body: htmlString)
 }
 
 app.use(router)
@@ -48,7 +48,7 @@ let app = HexavilleFramework()
 
 let router = Router()
 
-router.use(.get, [RandomNumberGenerateMiddleware()], "/hello") { response, context in
+router.use(.get, middlewares: [RandomNumberGenerateMiddleware()], "/hello") { response, context in
     return Response(body: "Random number is \(context["randomNumber"])")
 }
 
@@ -93,7 +93,7 @@ struct FooMiddleware: Middleware {
     }
 }
 
-app.use(.get, [FooMiddleware()], "/foo") { request, context in
+app.use(.get, middlewares: [FooMiddleware()], "/foo") { request, context in
     print(context["Foo"]) // Bar
 }
 ```
