@@ -3,4 +3,5 @@ import XCTest
 
 XCTMain([
     testCase(RouterTests.allTests),
+    testCase(HostResolverTests.allTests)
 ])
