@@ -1,238 +1,88 @@
+//
+//  CallbackURL.swift
+//  HexavilleAuth
+//
+//  Created by Yuki Takei on 2017/05/31.
+//
+//
+
 import Foundation
-import SwiftCLI
-@_exported import Prorsum
+import HexavilleFramework
 
-public class HexavilleFramework {
-    var routers: [Router] = []
+public struct HostResolver {
+    public static var shared = HostResolver()
     
-    var middlewares: [Middleware] = []
-    
-    var catchHandler: (Error) -> Response = { error in
-        return Response(status: .internalServerError, body: "\(error)".data)
-    }
-    
-    var logger: Logger = StandardOutputLogger()
-    
-    public init() {}
-}
-
-extension HexavilleFramework {
-    public func use(_ middleware: @escaping (Request, ApplicationContext) throws -> Chainer ) {
-        self.middlewares.append(BasicMiddleware(handler: middleware))
-    }
-    
-    public func use(_ middleware: Middleware) {
-        self.middlewares.append(middleware)
-    }
-    
-    public func use(_ router: Router) {
-        routers.append(router)
-    }
-    
-    public func `catch`(_ handler: @escaping (Error) -> Response) {
-        self.catchHandler = handler
-    }
-    
-    func dispatch(method: String, path: String, header: String, body: String?) -> Response {
-        var headers: Headers = [:]
-        header.components(separatedBy: "&").forEach {
-            if $0.isEmpty { return }
-            var splited = $0.components(separatedBy: "=")
-            headers[splited.removeFirst()] = splited.joined(separator: "=")
+    public func resolve() -> String {
+        guard let host = ProcessInfo.processInfo.environment["X_APIGATEWAY_HOST"] else {
+            fatalError("X_APIGATEWAY_HOST must not empty")
         }
         
-        let request = Request(
-            method: Request.Method(rawValue: method),
-            url: path == "/" ? URL(string: "aws://api-gateway/")! :  URL(string: "aws://api-gateway/\(path.trimLeft(["/"]))")!,
-            headers: headers,
-            body: .buffer(body?.data ?? Data())
-        )
+        guard let stage = ProcessInfo.processInfo.environment["X_APIGATEWAY_STAGE"],
+            let apiId = ProcessInfo.processInfo.environment["X_APIGATEWAY_API_ID"],
+            let region = ProcessInfo.processInfo.environment["AWS_REGION"] else {
+                return "https://\(host)"
+        }
         
-        return dispatch(request: request)
+        if host.contains(substring: "\(apiId).execute-api.\(region).amazonaws.com") {
+            return "https://\(host)/\(stage)"
+        }
+        
+        return "https://\(host)"
     }
-    
-    func dispatch(request: Request) -> Response {
-        do {
-            let context = ApplicationContext()
-            let chainer = try middlewares.chain(request, context: context)
-            switch chainer {
-            case .respond(to: let response):
-                var response = response
-                for (key, value) in context.responseHeaders {
-                    response.headers[key] = value
-                }
-                context.session?.write()
-                return response
+}
+
+public struct CallbackURL {
+    public enum BaseURLType: CustomStringConvertible {
+        case string(String)
+        case autoResolving(HostResolver)
+        
+        public var description: String {
+            switch self {
+            case .autoResolving(let resolver):
+                return resolver.resolve()
                 
-            case .next(let request):
-                for router in routers {
-                    if let (route, request) = router.matched(for: request) {
-                        var response = try route.respond(request, context)
-                        for (key, value) in context.responseHeaders {
-                            response.headers[key] = value
-                        }
-                        context.session?.write()
-                        return response
-                    }
-                }
-            }
-        } catch {
-            return self.catchHandler(error)
-        }
-        
-        return Response(status: .notFound, body: "\(request.path ?? "/") is not found")
-    }
-    
-    func generateRoutingManifest() throws -> Data {
-        var routingManifest: [[String: Any]] = []
-        
-        let routes: [Route] = routers.flatMap({ $0.routes })
-        
-        for route in routes {
-            let routeManifest = [
-                "path": route.apiGatewayStylePath(),
-                "method": "\(route.method)"
-            ]
-            routingManifest.append(routeManifest)
-        }
-        
-        let manifest: [String: Any] = [
-            "routing": routingManifest
-        ]
-        return try JSONSerialization.data(withJSONObject: manifest, options: [.prettyPrinted])
-    }
-    
-    public func run() throws {
-        CLI.setup(name: "hexavillefw")
-        CLI.register(commands: [
-            GenerateRoutingManifestCommand(application: self),
-            ExecuteCommand(application: self),
-            ServeCommand(application: self)
-            ])
-        _ = CLI.go()
-    }
-}
-
-class ServeCommand: Command {
-    let name = "serve"
-    let shortDescription = "Start Hexaville Builtin Server"
-    let port = Key<String>("-p", "--port", usage: "Port")
-    let backlog = Key<String>("-b", "--backlog", usage: "Number of backlog")
-    
-    weak var application: HexavilleFramework?
-    
-    init(application: HexavilleFramework){
-        self.application = application
-    }
-    
-    func execute() throws {
-        guard let application = self.application else { return }
-        let server = try HTTPServer { req, writer in
-            do {
-                let res = application.dispatch(request: req)
-                try writer.serialize(res)
-                print("\(req.method)".uppercased() + " \(req.path ?? "/") \(res.statusCode)")
-            } catch {
-                fatalError("\(error)")
+            case .string(let urlString):
+                return urlString
             }
         }
-        
-        var listenPort: UInt = 3000
-        if let portString = port.value, let p = UInt(portString) {
-            listenPort = p
-        }
-        
-        var backlogNum: Int = 1024
-        if let backlog = backlog.value, let b = Int(backlog) {
-            backlogNum = b
-        }
-        
-        try server.bind(host: "0.0.0.0", port: listenPort)
-        try server.listen(backlog: backlogNum)
-        
-        print("Hexaville Builtin Server started at 0.0.0.0:\(listenPort)")
-        
-        RunLoop.main.run()
-    }
-}
-
-class GenerateRoutingManifestCommand: Command {
-    let name = "gen-routing-manif"
-    let shortDescription = "Generate routing manifest file"
-    let dest = Parameter()
-    
-    weak var application: HexavilleFramework?
-    
-    init(application: HexavilleFramework){
-        self.application = application
     }
     
-    func execute() throws {
-        if let manifeset = try application?.generateRoutingManifest() {
-            try manifeset.write(to: URL(string: "file://\(dest.value)/.routing-manifest.json")!, options: [])
-        }
-    }
-}
-
-class ExecuteCommand: Command {
-    let name = "execute"
-    let shortDescription = "Execute the specified resource. ex. execute GET /"
-    let method = Parameter()
-    let path = Parameter()
-    let header = Key<String>("--header", usage: "query string formated header string ex. Content-Type=application/json&Accept=application/json")
-    let body = Key<String>("--body", usage: "body string")
+    public let baseURL: BaseURLType
+    public let path: String
     
     
-    weak var application: HexavilleFramework?
-    
-    init(application: HexavilleFramework){
-        self.application = application
+    public static func autoResolveHost(withPath path: String) -> CallbackURL {
+        return CallbackURL(path: path)
     }
     
-    func execute() throws {
-        guard let application = self.application else { return }
-        let response = application.dispatch(
-            method: method.value,
-            path: path.value,
-            header: header.value ?? "",
-            body: self.body.value
-        )
-        
-        var headerDictionary: [String: String] = [:]
-        response.headers.forEach {
-            headerDictionary[$0.key.description] = $0.value
+    private init(path: String) {
+        self.baseURL = .autoResolving(HostResolver.shared)
+        self.path = path
+    }
+    
+    public init(block: () -> CallbackURL) {
+        let callbackURL = block()
+        self.baseURL = callbackURL.baseURL
+        self.path = callbackURL.path
+    }
+    
+    public init(baseURL: String, path: String){
+        self.baseURL = .string(baseURL)
+        self.path = path
+    }
+    
+    public func absoluteURL() -> URL? {
+        return URL(string: "\(baseURL)\(path)")
+    }
+    
+    public func absoluteURL(withQueryItems queryItems: [URLQueryItem]) -> URL? {
+        guard let url = absoluteURL() else { return nil }
+        if queryItems.count > 0 {
+            let additionalQuery = queryItems.filter({ $0.value != nil }).map({ "\($0.name)=\($0.value!)" }).joined(separator: "&")
+            let separator = url.queryItems.count == 0 ? "?" : "&"
+            return URL(string: url.absoluteString+separator+additionalQuery)
         }
         
-        var output: [String: Any] = [
-            "statusCode": response.status.statusCode,
-            "headers": headerDictionary,
-            "body": String(data: response.body.asData(), encoding: .utf8) ?? ""
-        ]
-        
-        if let contentType = response.contentType {
-            switch (contentType.type, contentType.subtype) {
-            case ("image", _), ("application", "x-protobuf"), ("application", "x-google-protobuf"), ("application", "octet-stream"):
-                output["isBase64Encoded"] = true
-            default:
-                break
-            }
-        }
-        
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd hh:mm:ss"
-        let requestData = formatter.string(from: Date())
-        
-        application.logger.log(level: .info, message: "[\(requestData)] \(method.value.uppercased()) \(path.value) --header \(header.value ?? "") --body \(self.body.value ?? "") \(response.statusCode)")
-        
-        print("hexaville response format/json")
-        print("\t")
-        do {
-            let data = try JSONSerialization.data(withJSONObject: output, options: [.prettyPrinted])
-            print(String(data: data, encoding: .utf8) ?? "")
-        } catch {
-            print("{\"statusCode: 500, \"headers\": {\"Content-Type\": \"text/plain\"}, body: \"\(error)\"")
-        }
-        print("\t")
-        print("\t")
+        return url
     }
 }
