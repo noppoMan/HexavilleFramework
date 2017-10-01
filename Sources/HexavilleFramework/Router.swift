@@ -108,12 +108,12 @@ struct BasicRoute: Route {
     }
 }
 
-public class Router {
+public struct Router {
     var routes: [Route] = []
     
     public init(){}
     
-    public func use(_ method: Request.Method, middlewares: [Middleware] = [], _ path: String, _ handler: @escaping Respond) {
+    public mutating func use(_ method: Request.Method, middlewares: [Middleware] = [], _ path: String, _ handler: @escaping Respond) {
         let route = BasicRoute(method: method, path: path, middlewares: middlewares, handler: handler)
         routes.append(route)
     }

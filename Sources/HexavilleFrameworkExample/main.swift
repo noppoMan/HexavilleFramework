@@ -48,7 +48,7 @@ extension URLSession {
 
 let app = HexavilleFramework()
 
-let router = Router()
+var router = Router()
 
 app.use(RandomNumberGenerateMiddleware())
 
