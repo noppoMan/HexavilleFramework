@@ -103,21 +103,21 @@ extension HexavilleFramework {
     }
     
     public func run() throws {
-        CLI.setup(name: "hexavillefw")
-        CLI.register(commands: [
+        let hexavilleFrameworkCLI = CLI(name: "hexavillefw")
+        hexavilleFrameworkCLI.commands = [
             GenerateRoutingManifestCommand(application: self),
             ExecuteCommand(application: self),
             ServeCommand(application: self)
-            ])
-        _ = CLI.go()
+        ]
+        _ = hexavilleFrameworkCLI.go()
     }
 }
 
 class ServeCommand: Command {
     let name = "serve"
     let shortDescription = "Start Hexaville Builtin Server"
-    let port = Key<String>("-p", "--port", usage: "Port")
-    let backlog = Key<String>("-b", "--backlog", usage: "Number of backlog")
+    let port = Key<String>("-p", "--port", description: "Port")
+    let backlog = Key<String>("-b", "--backlog", description: "Number of backlog")
     
     weak var application: HexavilleFramework?
     
@@ -179,9 +179,8 @@ class ExecuteCommand: Command {
     let shortDescription = "Execute the specified resource. ex. execute GET /"
     let method = Parameter()
     let path = Parameter()
-    let header = Key<String>("--header", usage: "query string formated header string ex. Content-Type=application/json&Accept=application/json")
-    let body = Key<String>("--body", usage: "body string")
-    
+    let header = Key<String>("--header", description: "query string formated header string ex. Content-Type=application/json&Accept=application/json")
+    let body = Key<String>("--body", description: "body string")
     
     weak var application: HexavilleFramework?
     
