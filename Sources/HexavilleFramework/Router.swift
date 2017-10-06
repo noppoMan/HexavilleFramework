@@ -59,7 +59,7 @@ extension Route {
         var params: [String: String] = [:]
         
         for index in 0..<paramKeys.count {
-            #if os(Linux)
+            #if os(Linux) || swift(>=4.0)
                 let matchRange = match.range(at: index+1)
             #else
                 let matchRange = match.rangeAt(index+1)

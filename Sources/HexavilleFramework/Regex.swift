@@ -129,7 +129,7 @@ public class RouteRegex {
                 extract(fromPath: nsPath, with: keyMatch, at: 3, to: &matchExp)
                 extract(fromPath: nsPath, with: keyMatch, at: 4, to: &plusQuestStar)
                 
-                #if os(Linux)
+                #if os(Linux) || swift(>=4.0)
                     let keyMatchRange = keyMatch.range(at: 2)
                 #else
                     let keyMatchRange = keyMatch.rangeAt(2)
@@ -157,7 +157,7 @@ public class RouteRegex {
     
     func extract(fromPath path: NSString, with match: NSTextCheckingResult, at index: Int,
                  to string: inout String) {
-        #if os(Linux)
+        #if os(Linux) || swift(>=4.0)
             let range = match.range(at: index)
         #else
             let range = match.rangeAt(index)
