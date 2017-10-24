@@ -3,6 +3,16 @@ This is Application Framework Layer for [Hexaville](https://github.com/noppoMan/
 
 All Hexaville applications should be written in this framework.
 
+## Table of contents
+
+* [Routing](#routing)
+* [Middleware](#middleware)
+* [ApplicationContext](#applicationcontext)
+* [Session](#session)
+* [Error Handling](#error-handling)
+* [How to Deploy](#how-to-deploy)
+* [Builtin Web Server](#builtin-web-server)
+
 
 ## Usage
 
@@ -83,7 +93,17 @@ app.use(JWTAuthenticationMiddleware())
 
 ## ApplicationContext
 
-Context is the shared memory/storage for the request. 
+ApplicationContext is the shared storage for the request. 
+
+#### Available properties
+
+* memory
+* responseHeaders
+* session
+
+### memory
+
+`memory` property is used for share value between Middlewares and the Router.
 
 ```swift
 struct FooMiddleware: Middleware {
@@ -95,6 +115,78 @@ struct FooMiddleware: Middleware {
 
 app.use(.get, middlewares: [FooMiddleware()], "/foo") { request, context in
     print(context["Foo"]) // Bar
+}
+```
+
+### responseHeaders
+
+In the some middlewares, You'll want to preset response headers, sunch as `Set-Cookie`. By preseting HTTP headers into the `responseHeaders` property, the header values are automatically adedd to the actual response on the Framework side.
+
+Here is an example.
+
+```swift
+struct CookieSetMiddleware: Middleware {
+    func respond(to request: Request, context: ApplicationContext) throws -> Chainer {
+        context.responseHeaders["Set-Cookie"] = "vaild cookie value"
+        return .next(request)
+    }
+}
+
+app.use(.get, middlewares: [FooMiddleware()], "/foo") { request, context in
+    return Response(body: "OK")
+}
+```
+
+#### response
+```
+HTTP/1.1 200
+
+Set-Cookie: vaild cookie value
+
+OK
+```
+
+### session
+
+`session` property is used for data persistence that use in the application.
+See [Session](#session) for the detail.
+
+## Session
+
+HexavilleFramework provides Session Mechanism by `SessionMiddleware`. You can create your own SessionStore to conform `SessionStoreProvider` protocol.
+
+Bundled Sesssion Store is `MemoryStore`.
+
+#### Available Session Stores
+
+* MemoryStore: Bundled Session Store
+* [DynamoDBSessionStore](https://github.com/Hexaville/DynamodbSessionStore)
+* [RedisSessionStore](https://github.com/Hexaville/RedisSessionStore)
+
+### Usage
+
+```swift
+let session = SessionMiddleware(
+    cookieAttribute: CookieAttribute(
+        expiration: 3600,
+        httpOnly: true,
+        secure: false
+    ),
+    store: MemoryStore()
+)
+
+app.use(session)
+
+app.use { request, context in
+    // add value to session(memory)
+    context.session["user"] = User(name: "Luke", age: 25).serializeToJSONString()
+}
+
+var router = Router()
+
+// take value from context.session
+router.use(.get, "/") { request, context in
+    return Response(body: context.session["user"]!)
 }
 ```
 
@@ -125,7 +217,7 @@ try app.run()
 ## How to deploy?
 See the Hexaville [Documentation](https://github.com/noppoMan/Hexaville)
 
-## Debug with Builtin Web Server
+## Builtin Web Server
 
 You can debug your application with the builtin web server with `serve` command.
 
