@@ -76,8 +76,12 @@ enum JWTAuthenticationMiddleware {
 
 struct JWTAuthenticationMiddleware: Middleware {
     func respond(to request: Request, context: ApplicationContext) throws -> Chainer {
+        // intercept middleware chain by throwing
         guard let jwtString = request.headers["Authorization"] else {
             throw JWTAuthenticationMiddleware.authrozationHeaderIsMissing
+            
+            // or you can intercept middleware chain by directory responding.
+            // return .respond(to: Response(status: .unauthorized))
         }
         
         let jwt = try JWT.decode(jwtString)
