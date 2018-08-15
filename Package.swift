@@ -1,15 +1,19 @@
-// swift-tools-version:3.1
-
+// swift-tools-version:4.0
 import PackageDescription
 
 let package = Package(
     name: "HexavilleFramework",
-    targets: [
-        Target(name: "HexavilleFramework"),
-        Target(name: "HexavilleFrameworkExample", dependencies: ["HexavilleFramework"]),
+    products: [
+        .library(name: "HexavilleFramework", targets: ["HexavilleFramework"]),
+        .executable(name: "hexaville-framework-example", targets: ["HexavilleFrameworkExample"]),
     ],
     dependencies: [
-        .Package(url: "https://github.com/noppoMan/Prorsum.git", majorVersion: 0, minor: 1),
-        .Package(url: "https://github.com/jakeheis/SwiftCLI.git", majorVersion: 3, minor: 1)
+        .package(url: "https://github.com/noppoMan/Prorsum.git", .upToNextMajor(from: "0.3.3")),
+        .package(url: "https://github.com/jakeheis/SwiftCLI.git", .upToNextMajor(from: "5.0.0"))
+    ],
+    targets: [
+        .target(name: "HexavilleFramework", dependencies: ["Prorsum", "SwiftCLI"]),
+        .target(name: "HexavilleFrameworkExample", dependencies: ["HexavilleFramework"]),
+        .testTarget(name: "HexavilleFrameworkTests", dependencies: ["HexavilleFramework"])
     ]
 )
