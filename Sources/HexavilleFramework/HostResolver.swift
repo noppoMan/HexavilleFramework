@@ -29,7 +29,7 @@ public struct HostResolver {
             let region = environ["AWS_REGION"] else {
                 return nil
         }
-        if host.contains(substring: "\(apiId).execute-api.\(region).amazonaws.com") {
+        if host.contains("\(apiId).execute-api.\(region).amazonaws.com") {
             return "https://\(host)/\(stage)"
         }
         return "https://\(host)"

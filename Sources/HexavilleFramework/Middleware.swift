@@ -11,7 +11,7 @@ import Foundation
 public class ApplicationContext {
     public var memory: [String: Any] = [:]
     public var session: Session?
-    public var responseHeaders: Headers = [:]
+    public var responseHeaders: HTTPHeaders = HTTPHeaders()
     public init() {}
 }
 
