@@ -1,6 +1,7 @@
 import Foundation
 import SwiftCLI
-@_exported import Prorsum
+import NIO
+@_exported import NIOHTTP1
 
 public class HexavilleFramework {
     var routers: [Router] = []
@@ -8,7 +9,7 @@ public class HexavilleFramework {
     var middlewares: [Middleware] = []
     
     var catchHandler: (Error) -> Response = { error in
-        return Response(status: .internalServerError, body: "\(error)".data)
+        return Response(status: HTTPResponseStatus.internalServerError, body: "\(error)".data)
     }
     
     var logger: Logger = StandardOutputLogger()
@@ -34,15 +35,15 @@ extension HexavilleFramework {
     }
     
     func dispatch(method: String, path: String, header: String, body: String?) -> Response {
-        var headers: Headers = [:]
+        var headers: HTTPHeaders = HTTPHeaders()
         header.components(separatedBy: "&").forEach {
             if $0.isEmpty { return }
             var splited = $0.components(separatedBy: "=")
-            headers[splited.removeFirst()] = splited.joined(separator: "=")
+            headers.add(name: splited.removeFirst(), value: splited.joined(separator: "="))
         }
         
         let request = Request(
-            method: Request.Method(rawValue: method),
+            method: HTTPMethod(rawValue: method),
             url: path == "/" ? URL(string: "aws://api-gateway/")! :  URL(string: "aws://api-gateway/\(path.trimLeft(["/"]))")!,
             headers: headers,
             body: .buffer(body?.data ?? Data())
@@ -59,7 +60,7 @@ extension HexavilleFramework {
             case .respond(to: let response):
                 var response = response
                 for (key, value) in context.responseHeaders {
-                    response.headers[key] = value
+                    response.headers.add(name: key, value: value)
                 }
                 context.session?.write()
                 return response
@@ -69,7 +70,7 @@ extension HexavilleFramework {
                     if let (route, request) = router.matched(for: request) {
                         var response = try route.respond(request, context)
                         for (key, value) in context.responseHeaders {
-                            response.headers[key] = value
+                            response.headers.add(name: key, value: value)
                         }
                         context.session?.write()
                         return response
@@ -127,28 +128,45 @@ class ServeCommand: Command {
     
     func execute() throws {
         guard let application = self.application else { return }
-        let server = try HTTPServer { req, writer in
-            do {
-                let res = application.dispatch(request: req)
-                try writer.serialize(res)
-                print("\(req.method)".uppercased() + " \(req.path ?? "/") \(res.statusCode)")
-            } catch {
-                fatalError("\(error)")
-            }
+        let server = HTTPServer { request, bodyData, ctx in
+            let hfRequest = Request(
+                method: request.method,
+                url: URL(string: request.uri)!,
+                headers: request.headers,
+                body: bodyData != nil ? .buffer(bodyData!) : .empty
+            )
+            
+            let response = application.dispatch(request: hfRequest)
+            
+            let headerData = NIOAny(
+                HTTPServerResponsePart.head(
+                    httpResponseHead(
+                        request: request,
+                        status: response.status,headers:
+                        response.headers
+                    )
+                )
+            )
+            
+            ctx.write(headerData, promise: nil)
+            
+            let body = NIOAny(
+                HTTPServerResponsePart.body(.byteBuffer(response.body.asByteBuffer()))
+            )
+            ctx.write(body, promise: nil)
+            
+            ctx.writeAndFlush(
+                NIOAny(HTTPServerResponsePart.end(nil)),
+                promise: nil
+            )
         }
         
-        var listenPort: UInt = 3000
-        if let portString = port.value, let p = UInt(portString) {
+        var listenPort: Int = 3000
+        if let portString = port.value, let p = Int(portString) {
             listenPort = p
         }
         
-        var backlogNum: Int = 1024
-        if let backlog = backlog.value, let b = Int(backlog) {
-            backlogNum = b
-        }
-        
-        try server.bind(host: "0.0.0.0", port: listenPort)
-        try server.listen(backlog: backlogNum)
+        try server.start(host: "0.0.0.0", port: listenPort)
         
         print("Hexaville Builtin Server started at 0.0.0.0:\(listenPort)")
         
@@ -198,12 +216,12 @@ class ExecuteCommand: Command {
         )
         
         var headerDictionary: [String: String] = [:]
-        response.headers.forEach {
-            headerDictionary[$0.key.description] = $0.value
+        response.headers.forEach { name, value in
+            headerDictionary[name] = value
         }
         
         var output: [String: Any] = [
-            "statusCode": response.status.statusCode,
+            "statusCode": response.status.code,
             "headers": headerDictionary,
             "body": String(data: response.body.asData(), encoding: .utf8) ?? ""
         ]
@@ -234,4 +252,25 @@ class ExecuteCommand: Command {
         print("\t")
         print("\t")
     }
+}
+
+private func httpResponseHead(request: HTTPRequestHead, status: HTTPResponseStatus, headers: HTTPHeaders = HTTPHeaders()) -> HTTPResponseHead {
+    var head = HTTPResponseHead(version: request.version, status: status, headers: headers)
+    let connectionHeaders: [String] = head.headers[canonicalForm: "connection"].map { $0.lowercased() }
+    
+    if !connectionHeaders.contains("keep-alive") && !connectionHeaders.contains("close") {
+        // the user hasn't pre-set either 'keep-alive' or 'close', so we might need to add headers
+        switch (request.isKeepAlive, request.version.major, request.version.minor) {
+        case (true, 1, 0):
+            // HTTP/1.0 and the request has 'Connection: keep-alive', we should mirror that
+            head.headers.add(name: "Connection", value: "keep-alive")
+        case (false, 1, let n) where n >= 1:
+            // HTTP/1.1 (or treated as such) and the request has 'Connection: close', we should mirror that
+            head.headers.add(name: "Connection", value: "close")
+        default:
+            // we should match the default or are dealing with some HTTP that we don't support, let's leave as is
+            ()
+        }
+    }
+    return head
 }
