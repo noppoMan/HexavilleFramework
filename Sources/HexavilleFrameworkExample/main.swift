@@ -47,7 +47,7 @@ extension URLSession {
     }
 }
 
-let app = HexavilleFramework()
+let app = HexavilleFramework(hexavillePKGConfig)
 
 var router = Router()
 

@@ -2,6 +2,15 @@
   "object": {
     "pins": [
       {
+        "package": "PKGConfig",
+        "repositoryURL": "https://github.com/Hexaville/PKGConfig.git",
+        "state": {
+          "branch": "master",
+          "revision": "22ec646084d749dd7127a78e41d0f726e3063c78",
+          "version": null
+        }
+      },
+      {
         "package": "swift-nio",
         "repositoryURL": "https://github.com/apple/swift-nio.git",
         "state": {

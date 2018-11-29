@@ -2,8 +2,11 @@ import Foundation
 import SwiftCLI
 import NIO
 @_exported import NIOHTTP1
+import PKGConfig
 
 public class HexavilleFramework {
+    let config: PKGConfig
+    
     var routers: [Router] = []
     
     var middlewares: [Middleware] = []
@@ -14,7 +17,9 @@ public class HexavilleFramework {
     
     var logger: Logger = StandardOutputLogger()
     
-    public init() {}
+    public init(_ config: PKGConfig) {
+        self.config = config
+    }
 }
 
 extension HexavilleFramework {
@@ -108,7 +113,8 @@ extension HexavilleFramework {
         hexavilleFrameworkCLI.commands = [
             GenerateRoutingManifestCommand(application: self),
             ExecuteCommand(application: self),
-            ServeCommand(application: self)
+            ServeCommand(application: self),
+            GeneratePKGConfigJSONCommand(application: self)
         ]
         _ = hexavilleFrameworkCLI.go()
     }
@@ -251,6 +257,28 @@ class ExecuteCommand: Command {
         }
         print("\t")
         print("\t")
+    }
+}
+
+class GeneratePKGConfigJSONCommand: Command {
+    let name = "gen-pkg-conf"
+    let shortDescription = "Genrate PkgConfig JSON file"
+    let dest = Parameter()
+    
+    weak var application: HexavilleFramework?
+    
+    init(application: HexavilleFramework){
+        self.application = application
+    }
+    
+    func execute() throws {
+        if let pkgConfig = application?.config {
+            try pkgConfig.encodeToJSONUTF8String().write(
+                to: URL(string: "file://\(dest.value)/.hexaville.pkgconfig.json")!,
+                atomically: true,
+                encoding: .utf8
+            )
+        }
     }
 }
 
