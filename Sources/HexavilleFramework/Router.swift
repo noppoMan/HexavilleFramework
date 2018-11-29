@@ -27,9 +27,9 @@ extension Route {
         var components = path.components(separatedBy: "/")
         for (offset, element) in components.enumerated() {
             if element.isEmpty { continue }
-            let headChar = element.substring(with: element.startIndex..<element.index(element.startIndex, offsetBy: 1))
+            let headChar = element[element.startIndex..<element.index(element.startIndex, offsetBy: 1)]
             if headChar == ":" {
-                let paramKey = element.substring(with: element.index(element.startIndex, offsetBy: 1)..<element.endIndex)
+                let paramKey = element[element.index(element.startIndex, offsetBy: 1)..<element.endIndex]
                 components[offset] = "{\(paramKey)}"
             }
         }
@@ -45,7 +45,7 @@ extension Route {
             return (self.path == urlPath, nil)
         }
         
-        let results = regexp.matches(in: urlPath, options: [], range: NSMakeRange(0, urlPath.characters.count))
+        let results = regexp.matches(in: urlPath, options: [], range: NSMakeRange(0, urlPath.count))
         
         guard let result = results.first else { return (false, nil) }
         

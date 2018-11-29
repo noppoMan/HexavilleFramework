@@ -11,8 +11,6 @@ extension Body {
         switch self {
         case .buffer(let data):
             return data
-        default:
-            return Data()
         }
     }
 }

@@ -20,7 +20,6 @@ extension Body {
     public var isEmpty: Bool {
         switch self {
         case .buffer(let buffer): return buffer.isEmpty
-        default: return false
         }
     }
 }
@@ -29,7 +28,6 @@ extension Body {
     public var isBuffer: Bool {
         switch self {
         case .buffer: return true
-        default: return false
         }
     }
 }

@@ -16,8 +16,6 @@ extension Body {
             var buf = ByteBufferAllocator().buffer(capacity: data.count)
             buf.write(bytes: data)
             return buf
-        default:
-            return ByteBufferAllocator().buffer(capacity: 0)
         }
     }
 }

@@ -50,8 +50,6 @@ extension Response {
         switch body {
         case let .buffer(body):
             self.headers.add(name: "Content-Length", value: body.count.description)
-        default:
-            self.headers.add(name: "Transfer-Encoding", value: "chunked")
         }
     }
 }
