@@ -40,7 +40,7 @@ extension Request : RequestConvertible {
 }
 
 extension Request {
-    public init(method: HTTPMethod = .GET, url: URL = URL(string: "/")!, headers: HTTPHeaders = HTTPHeaders(), body: Body) {
+    public init(method: HTTPMethod = .GET, url: URL = URL(string: "/")!, headers: HTTPHeaders = HTTPHeaders(), body: Body = .empty) {
         self.init(
             method: method,
             url: url,
@@ -53,16 +53,6 @@ extension Request {
         case let .buffer(body):
             self.headers.add(name: "Content-Length", value: body.count.description)
         }
-    }
-}
-
-extension Request {
-    public init(method: HTTPMethod = .GET, url: URL = URL(string: "/")!, headers: [String: String] = [:], body: Body) {
-        var httpHeaders = HTTPHeaders()
-        headers.forEach { name, value in
-            httpHeaders.add(name: name, value: value)
-        }
-        self.init(method: method, url: url, headers: httpHeaders, body: body)
     }
 }
 

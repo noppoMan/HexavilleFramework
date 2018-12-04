@@ -38,7 +38,7 @@ extension Response : ResponseConvertible {
 }
 
 extension Response {
-    public init(status: HTTPResponseStatus = .ok, headers: HTTPHeaders = HTTPHeaders(), body: Body) {
+    public init(status: HTTPResponseStatus = .ok, headers: HTTPHeaders = HTTPHeaders(), body: Body = .empty) {
         self.init(
             version: HTTPVersion(major: 1, minor: 1),
             status: status,
