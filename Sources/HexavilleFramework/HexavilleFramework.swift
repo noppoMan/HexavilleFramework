@@ -85,7 +85,7 @@ extension HexavilleFramework {
     public func run() throws {
         let hexavilleFrameworkCLI = CLI(name: "hexavillefw")
         hexavilleFrameworkCLI.commands = [
-            ExecuteOnLambdaCommand(application: self),
+            Execute(application: self),
             ServeCommand(application: self)
         ]
         _ = hexavilleFrameworkCLI.go()
@@ -152,7 +152,7 @@ class ServeCommand: Command {
     }
 }
 
-class ExecuteOnLambdaCommand: Command {
+class Execute: Command {
     struct APIGatewayIntegrationEventData: Decodable {
         let resource: String
         let path: String
@@ -168,9 +168,10 @@ class ExecuteOnLambdaCommand: Command {
         // let multiValueHeaders: [String: String]
     }
     
-    let name = "execute-on-lambda"
-    let shortDescription = "Execute the specified resource. e.g. execute-on-lambda {jsonEventData}"
-    let event = Parameter()
+    let name = "execute"
+    let shortDescription = "Execute the specified resource"
+    let dummy1 = Key<String>("-d1", "--dummuy1", description: "Dummy argument for avoiding Segmentation fault")
+    let dummy2 = Key<String>("-d2", "--dummuy2", description: "Dummy argument for  Segmentation fault")
     
     weak var application: HexavilleFramework?
     
@@ -180,7 +181,11 @@ class ExecuteOnLambdaCommand: Command {
     
     func execute() throws {
         guard let application = self.application else { return }
-        let eventData = try JSONDecoder().decode(APIGatewayIntegrationEventData.self, from: event.value.data)
+        
+        guard let event = ProcessInfo.processInfo.environment["LAMBDA_INTEGRATION_EVENT"] else {
+            fatalError("The environment variable $LAMBDA_INTEGRATION_EVENT should not be empty")
+        }
+        let eventData = try JSONDecoder().decode(APIGatewayIntegrationEventData.self, from: event.data)
         
         dispatchAndEcho(
             application: application,
@@ -224,7 +229,7 @@ private func dispatchAndEcho(application: HexavilleFramework, method: String, pa
     formatter.dateFormat = "yyyy-MM-dd hh:mm:ss"
     let requestData = formatter.string(from: Date())
     
-    application.logger.log(level: .info, message: "[\(requestData)] \(method.uppercased()) \(path) --header \(header) --body \(body ?? "") \(response.statusCode)")
+    // application.logger.log(level: .info, message: "[\(requestData)] \(method.uppercased()) \(path) --header \(header) --body \(body ?? "") \(response.statusCode)")
     
     do {
         let data = try JSONSerialization.data(withJSONObject: output, options: [.prettyPrinted])
