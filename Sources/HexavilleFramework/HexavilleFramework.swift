@@ -234,7 +234,7 @@ private func dispatchAndEcho(application: HexavilleFramework, method: String, pa
     formatter.dateFormat = "yyyy-MM-dd hh:mm:ss"
     let requestData = formatter.string(from: Date())
     
-    // application.logger.log(level: .info, message: "[\(requestData)] \(method.uppercased()) \(path) --header \(header) --body \(body ?? "") \(response.statusCode)")
+    application.logger.log(level: .info, message: "[\(requestData)] \(method.uppercased()) \(path) --header \(header) --body \(body ?? "") \(response.statusCode)")
     
     do {
         let data = try JSONSerialization.data(withJSONObject: output, options: [.prettyPrinted])
