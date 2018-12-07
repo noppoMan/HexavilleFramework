@@ -18,7 +18,7 @@ public struct AssetLoader {
     public var assetPathCandidates = [String]()
     
     public init() {
-        let root = #file.characters
+        let root = #file
             .split(separator: "/", omittingEmptySubsequences: false)
             .dropLast(2)
             .map { String($0) }

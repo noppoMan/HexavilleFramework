@@ -1,9 +1,7 @@
 //
-//  Body.swift
-//  HexavilleFramework
+//  Body+Data.swift
 //
-//  Created by Yuki Takei on 2017/05/20.
-//
+//  Created by Yuki Takei on 2018/11/28.
 //
 
 import Foundation
@@ -13,8 +11,6 @@ extension Body {
         switch self {
         case .buffer(let data):
             return data
-        default:
-            return Data()
         }
     }
 }

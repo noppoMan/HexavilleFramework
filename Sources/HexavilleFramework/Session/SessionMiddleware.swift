@@ -50,7 +50,10 @@ public final class SessionMiddleware: Middleware {
         if cookies.count == 0 {
             let id = Session.generateId()
             context.session = Session(id: id, store: store, ttl: cookieAttribute.expiration)
-            context.responseHeaders["Set-Cookie"] = generateCookie(withSessionId: id).description
+            context.responseHeaders.add(
+                name: "Set-Cookie",
+                value: generateCookie(withSessionId: id).description
+            )
             return .next(request)
         }
         

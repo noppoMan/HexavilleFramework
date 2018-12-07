@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import NIOHTTP1
 
 public typealias Respond = (Request, ApplicationContext) throws -> Response
 
@@ -14,7 +15,7 @@ public protocol Route {
     var path: String { get }
     var regexp: NSRegularExpression? { get }
     var paramKeys: [String] { get }
-    var method: Request.Method { get }
+    var method: HTTPMethod{ get }
     var handler: Respond { get }
     var middlewares: [Middleware] { get }
     
@@ -26,9 +27,9 @@ extension Route {
         var components = path.components(separatedBy: "/")
         for (offset, element) in components.enumerated() {
             if element.isEmpty { continue }
-            let headChar = element.substring(with: element.startIndex..<element.index(element.startIndex, offsetBy: 1))
+            let headChar = element[element.startIndex..<element.index(element.startIndex, offsetBy: 1)]
             if headChar == ":" {
-                let paramKey = element.substring(with: element.index(element.startIndex, offsetBy: 1)..<element.endIndex)
+                let paramKey = element[element.index(element.startIndex, offsetBy: 1)..<element.endIndex]
                 components[offset] = "{\(paramKey)}"
             }
         }
@@ -44,7 +45,7 @@ extension Route {
             return (self.path == urlPath, nil)
         }
         
-        let results = regexp.matches(in: urlPath, options: [], range: NSMakeRange(0, urlPath.characters.count))
+        let results = regexp.matches(in: urlPath, options: [], range: NSMakeRange(0, urlPath.count))
         
         guard let result = results.first else { return (false, nil) }
         
@@ -81,12 +82,12 @@ extension Route {
 struct BasicRoute: Route {
     let path: String
     let regexp: NSRegularExpression?
-    let method: Request.Method
+    let method: HTTPMethod
     let handler: Respond
     let paramKeys: [String]
     let middlewares: [Middleware]
     
-    init(method: Request.Method, path: String, middlewares: [Middleware] = [], handler: @escaping Respond){
+    init(method: HTTPMethod, path: String, middlewares: [Middleware] = [], handler: @escaping Respond){
         
         let (regex, _, strings) = RouteRegex.sharedInstance.buildRegex(fromPattern: path, allowPartialMatch: false)
         self.method = method
@@ -113,7 +114,7 @@ public struct Router {
     
     public init(){}
     
-    public mutating func use(_ method: Request.Method, middlewares: [Middleware] = [], _ path: String, _ handler: @escaping Respond) {
+    public mutating func use(_ method: HTTPMethod, middlewares: [Middleware] = [], _ path: String, _ handler: @escaping Respond) {
         let route = BasicRoute(method: method, path: path, middlewares: middlewares, handler: handler)
         routes.append(route)
     }

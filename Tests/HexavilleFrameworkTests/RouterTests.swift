@@ -18,9 +18,9 @@ class RouterTests: XCTestCase {
             return Response()
         }
         
-        router.use(.get, "/test", testHandler)
-        router.use(.get, "/test/:id", testHandler)
-        router.use(.get, "/test/:user/:id/foo", testHandler)
+        router.use(.GET, "/test", testHandler)
+        router.use(.GET, "/test/:id", testHandler)
+        router.use(.GET, "/test/:user/:id/foo", testHandler)
         
         return router
     }

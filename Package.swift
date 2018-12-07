@@ -8,11 +8,18 @@ let package = Package(
         .executable(name: "hexaville-framework-example", targets: ["HexavilleFrameworkExample"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/noppoMan/Prorsum.git", .upToNextMajor(from: "0.3.3")),
+        .package(url: "https://github.com/apple/swift-nio.git", from: "1.11.0"),
+        .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "1.3.2"),
         .package(url: "https://github.com/jakeheis/SwiftCLI.git", .upToNextMajor(from: "5.0.0"))
     ],
     targets: [
-        .target(name: "HexavilleFramework", dependencies: ["Prorsum", "SwiftCLI"]),
+        .target(name: "HexavilleFramework", dependencies: [
+            "NIO",
+            "NIOHTTP1",
+            "NIOOpenSSL",
+            "NIOFoundationCompat",
+            "SwiftCLI"
+        ]),
         .target(name: "HexavilleFrameworkExample", dependencies: ["HexavilleFramework"]),
         .testTarget(name: "HexavilleFrameworkTests", dependencies: ["HexavilleFramework"])
     ]
