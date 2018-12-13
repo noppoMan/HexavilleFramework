@@ -41,10 +41,15 @@ extension HexavilleFramework {
             var splited = $0.components(separatedBy: "=")
             headers.add(name: splited.removeFirst(), value: splited.joined(separator: "="))
         }
-        
+
+        // Percent encode URL since API Gateway Lambda Proxy Integration decodes
+        // the strings and the URL will be considered invalid without encoding
+        let encodedPath = path.trimLeft(["/"]).addingPercentEncoding(
+            withAllowedCharacters: .urlQueryAllowed
+        )!
         let request = Request(
             method: HTTPMethod(rawValue: method),
-            url: path == "/" ? URL(string: "aws://api-gateway/")! :  URL(string: "aws://api-gateway/\(path.trimLeft(["/"]))")!,
+            url: path == "/" ? URL(string: "aws://api-gateway/")! :  URL(string: "aws://api-gateway/\(encodedPath)")!,
             headers: headers,
             body: .buffer(body?.data ?? Data())
         )
