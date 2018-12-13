@@ -16,7 +16,7 @@ class HexavilleFrameworkTests: XCTestCase {
         let app = HexavilleFramework()
         var router = Router()
         // Handles / path
-        router.use(.get, "/") { request, context in
+        router.use(.GET, "/") { request, context in
             XCTAssertEqual("/", request.path)
             // The query items are intact
             XCTAssertEqual(
