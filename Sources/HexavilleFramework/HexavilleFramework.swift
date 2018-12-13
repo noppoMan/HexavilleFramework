@@ -202,7 +202,7 @@ class ExecuteCommand: Command {
     let shortDescription = "Execute the specified resource. ex. execute GET /"
     let method = Parameter()
     let path = Parameter()
-    let header = Key<String>("--header", description: "query string formated header string ex. Content-Type=application/json&Accept=application/json")
+    let header = Key<String>("--header", description: "base64 encoded query string formated header string e.g.  base64(Content-Type=application/json&Accept=application/json)")
     let body = Key<String>("--body", description: "body string")
     
     weak var application: HexavilleFramework?
@@ -213,10 +213,11 @@ class ExecuteCommand: Command {
     
     func execute() throws {
         guard let application = self.application else { return }
+        let decodedHeader = String(data: Data(base64Encoded: header.value ?? "") ?? Data(), encoding: .utf8) ?? ""
         let response = application.dispatch(
             method: method.value,
             path: path.value,
-            header: header.value ?? "",
+            header: decodedHeader,
             body: self.body.value
         )
         
@@ -244,7 +245,7 @@ class ExecuteCommand: Command {
         formatter.dateFormat = "yyyy-MM-dd hh:mm:ss"
         let requestData = formatter.string(from: Date())
         
-        application.logger.log(level: .info, message: "[\(requestData)] \(method.value.uppercased()) \(path.value) --header \(header.value ?? "") --body \(self.body.value ?? "") \(response.statusCode)")
+        application.logger.log(level: .info, message: "[\(requestData)] \(method.value.uppercased()) \(path.value) --header \(decodedHeader) --body \(self.body.value ?? "") \(response.statusCode)")
         
         print("hexaville response format/json")
         print("\t")
