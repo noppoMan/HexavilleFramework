@@ -49,7 +49,7 @@ extension HexavilleFramework {
         )!
         let request = Request(
             method: HTTPMethod(rawValue: method),
-            url: path == "/" ? URL(string: "aws://api-gateway/")! :  URL(string: "aws://api-gateway/\(encodedPath)")!,
+            url: path == "/" ? URL(string: "aws://api-gateway/")! :  URL(string: "aws://api-gateway\(encodedPath)")!,
             headers: headers,
             body: .buffer(body?.data ?? Data())
         )
@@ -214,6 +214,7 @@ class ExecuteCommand: Command {
     func execute() throws {
         guard let application = self.application else { return }
         let decodedHeader = String(data: Data(base64Encoded: header.value ?? "") ?? Data(), encoding: .utf8) ?? ""
+
         let response = application.dispatch(
             method: method.value,
             path: path.value,
