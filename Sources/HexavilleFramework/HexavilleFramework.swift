@@ -137,11 +137,6 @@ class ServeCommand: Command {
                 HTTPServerResponsePart.body(.byteBuffer(response.body.asByteBuffer()))
             )
             ctx.write(body, promise: nil)
-            
-            ctx.writeAndFlush(
-                NIOAny(HTTPServerResponsePart.end(nil)),
-                promise: nil
-            )
         }
         
         var listenPort: Int = 3000
@@ -149,11 +144,7 @@ class ServeCommand: Command {
             listenPort = p
         }
         
-        try server.start(host: "0.0.0.0", port: listenPort)
-        
-        print("Hexaville Builtin Server started at 0.0.0.0:\(listenPort)")
-        
-        RunLoop.main.run()
+        try server.start(port: listenPort)
     }
 }
 
