@@ -14,7 +14,7 @@ extension Body {
         switch self {
         case .buffer(let data):
             var buf = ByteBufferAllocator().buffer(capacity: data.count)
-            buf.writeBytes(data)
+            buf.write(bytes: data)
             return buf
         }
     }

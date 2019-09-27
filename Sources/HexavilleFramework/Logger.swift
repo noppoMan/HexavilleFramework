@@ -8,12 +8,6 @@
 
 import Foundation
 
-#if os(OSX)
-    import Darwin.C
-#else
-    import Glibc
-#endif
-
 public enum LogLevel {
     case info
     case debug
@@ -29,10 +23,6 @@ public protocol Logger {
 public struct StandardOutputLogger: Logger {
     public func log(level: LogLevel = .info, message: String) {
         let levelString = "\(level)".uppercased()
-        if let _ = ProcessInfo.processInfo.environment["LAMBDA_TASK_ROOT"] {
-            fputs("[\(levelString)] \(message)", stderr)
-        } else {
-            print("[\(levelString)] \(message)")
-        }
+        print("[\(levelString)] \(message)")
     }
 }

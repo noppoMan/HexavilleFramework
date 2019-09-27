@@ -14,7 +14,7 @@ extension String {
     
     public var byteBuffer: ByteBuffer {
         var buf = ByteBufferAllocator().buffer(capacity: self.count)
-        buf.writeString(self)
+        buf.write(string: self)
         return buf
     }
     
