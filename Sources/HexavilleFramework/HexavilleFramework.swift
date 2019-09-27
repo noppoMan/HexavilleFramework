@@ -34,12 +34,10 @@ extension HexavilleFramework {
         self.catchHandler = handler
     }
     
-    func dispatch(method: String, path: String, header: String, body: String?) -> Response {
+    func dispatch(method: String, path: String, header: [String: String], body: String?) -> Response {
         var headers: HTTPHeaders = HTTPHeaders()
-        header.components(separatedBy: "&").forEach {
-            if $0.isEmpty { return }
-            var splited = $0.components(separatedBy: "=")
-            headers.add(name: splited.removeFirst(), value: splited.joined(separator: "="))
+        header.forEach {
+            headers.add(name: $0.key, value: $0.value)
         }
 
         // Percent encode URL since API Gateway Lambda Proxy Integration decodes
@@ -49,7 +47,7 @@ extension HexavilleFramework {
         )!
         let request = Request(
             method: HTTPMethod(rawValue: method),
-            url: path == "/" ? URL(string: "aws://api-gateway/")! :  URL(string: "aws://api-gateway/\(encodedPath)")!,
+            url: path == "/" ? URL(string: "aws://api-gateway/")! :  URL(string: "aws://api-gateway\(encodedPath)")!,
             headers: headers,
             body: .buffer(body?.data ?? Data())
         )
@@ -89,29 +87,9 @@ extension HexavilleFramework {
         return Response(status: .notFound, body: "\(request.path ?? "/") is not found")
     }
     
-    func generateRoutingManifest() throws -> Data {
-        var routingManifest: [[String: Any]] = []
-        
-        let routes: [Route] = routers.flatMap({ $0.routes })
-        
-        for route in routes {
-            let routeManifest = [
-                "path": route.apiGatewayStylePath(),
-                "method": "\(route.method)"
-            ]
-            routingManifest.append(routeManifest)
-        }
-        
-        let manifest: [String: Any] = [
-            "routing": routingManifest
-        ]
-        return try JSONSerialization.data(withJSONObject: manifest, options: [.prettyPrinted])
-    }
-    
     public func run() throws {
         let hexavilleFrameworkCLI = CLI(name: "hexavillefw")
         hexavilleFrameworkCLI.commands = [
-            GenerateRoutingManifestCommand(application: self),
             ExecuteCommand(application: self),
             ServeCommand(application: self)
         ]
@@ -159,11 +137,6 @@ class ServeCommand: Command {
                 HTTPServerResponsePart.body(.byteBuffer(response.body.asByteBuffer()))
             )
             ctx.write(body, promise: nil)
-            
-            ctx.writeAndFlush(
-                NIOAny(HTTPServerResponsePart.end(nil)),
-                promise: nil
-            )
         }
         
         var listenPort: Int = 3000
@@ -171,29 +144,7 @@ class ServeCommand: Command {
             listenPort = p
         }
         
-        try server.start(host: "0.0.0.0", port: listenPort)
-        
-        print("Hexaville Builtin Server started at 0.0.0.0:\(listenPort)")
-        
-        RunLoop.main.run()
-    }
-}
-
-class GenerateRoutingManifestCommand: Command {
-    let name = "gen-routing-manif"
-    let shortDescription = "Generate routing manifest file"
-    let dest = Parameter()
-    
-    weak var application: HexavilleFramework?
-    
-    init(application: HexavilleFramework){
-        self.application = application
-    }
-    
-    func execute() throws {
-        if let manifeset = try application?.generateRoutingManifest() {
-            try manifeset.write(to: URL(string: "file://\(dest.value)/.routing-manifest.json")!, options: [])
-        }
+        try server.start(port: listenPort)
     }
 }
 
@@ -214,10 +165,20 @@ class ExecuteCommand: Command {
     func execute() throws {
         guard let application = self.application else { return }
         let decodedHeader = String(data: Data(base64Encoded: header.value ?? "") ?? Data(), encoding: .utf8) ?? ""
+        
+        var header = [String: String]()
+        
+        decodedHeader.split(separator: "&").forEach {
+            let components = $0.split(separator: "=")
+            if let key = components.first, let value = components.last {
+                header[String(key)] = String(value)
+            }
+        }
+
         let response = application.dispatch(
             method: method.value,
             path: path.value,
-            header: decodedHeader,
+            header: header,
             body: self.body.value
         )
         
