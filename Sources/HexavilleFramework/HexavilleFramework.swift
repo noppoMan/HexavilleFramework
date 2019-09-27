@@ -90,7 +90,7 @@ extension HexavilleFramework {
     public func run() throws {
         let hexavilleFrameworkCLI = CLI(name: "hexavillefw")
         hexavilleFrameworkCLI.commands = [
-            Execute(application: self),
+            ExecuteCommand(application: self),
             ServeCommand(application: self)
         ]
         _ = hexavilleFrameworkCLI.go()
@@ -148,26 +148,13 @@ class ServeCommand: Command {
     }
 }
 
-class Execute: Command {
-    struct APIGatewayIntegrationEventData: Decodable {
-        let resource: String
-        let path: String
-        let httpMethod: String
-        let headers: [String: String]
-        let body: String?
-        let isBase64Encoded: Bool
-        // let requestContext: [String: Any]
-        let queryStringParameters: String?
-        let multiValueQueryStringParameters: String?
-        let pathParameters: String?
-        let stageVariables: String?
-        // let multiValueHeaders: [String: String]
-    }
-    
+class ExecuteCommand: Command {
     let name = "execute"
-    let shortDescription = "Execute the specified resource"
-    let dummy1 = Key<String>("-d1", "--dummuy1", description: "Dummy argument for avoiding Segmentation fault")
-    let dummy2 = Key<String>("-d2", "--dummuy2", description: "Dummy argument for  Segmentation fault")
+    let shortDescription = "Execute the specified resource. ex. execute GET /"
+    let method = Parameter()
+    let path = Parameter()
+    let header = Key<String>("--header", description: "base64 encoded query string formated header string e.g.  base64(Content-Type=application/json&Accept=application/json)")
+    let body = Key<String>("--body", description: "body string")
     
     weak var application: HexavilleFramework?
     
@@ -177,61 +164,60 @@ class Execute: Command {
     
     func execute() throws {
         guard let application = self.application else { return }
+        let decodedHeader = String(data: Data(base64Encoded: header.value ?? "") ?? Data(), encoding: .utf8) ?? ""
         
-        guard let event = ProcessInfo.processInfo.environment["LAMBDA_INTEGRATION_EVENT"] else {
-            fatalError("The environment variable $LAMBDA_INTEGRATION_EVENT should not be empty")
+        var header = [String: String]()
+        
+        decodedHeader.split(separator: "&").forEach {
+            let components = $0.split(separator: "=")
+            if let key = components.first, let value = components.last {
+                header[String(key)] = String(value)
+            }
         }
-        let eventData = try JSONDecoder().decode(APIGatewayIntegrationEventData.self, from: event.data)
-        
-        dispatchAndEcho(
-            application: application,
-            method: eventData.httpMethod,
-            path: eventData.path,
-            header: eventData.headers,
-            body: eventData.body
-        )
-    }
-}
 
-private func dispatchAndEcho(application: HexavilleFramework, method: String, path: String, header: [String: String], body: String?) {
-    let response = application.dispatch(
-        method: method,
-        path: path,
-        header: header,
-        body: body
-    )
-    
-    var headerDictionary: [String: String] = [:]
-    response.headers.forEach { name, value in
-        headerDictionary[name] = value
-    }
-    
-    var output: [String: Any] = [
-        "statusCode": response.status.code,
-        "headers": headerDictionary,
-        "body": String(data: response.body.asData(), encoding: .utf8) ?? ""
-    ]
-    
-    if let contentType = response.contentType {
-        switch (contentType.type, contentType.subtype) {
-        case ("image", _), ("application", "x-protobuf"), ("application", "x-google-protobuf"), ("application", "octet-stream"):
-            output["isBase64Encoded"] = true
-        default:
-            break
+        let response = application.dispatch(
+            method: method.value,
+            path: path.value,
+            header: header,
+            body: self.body.value
+        )
+        
+        var headerDictionary: [String: String] = [:]
+        response.headers.forEach { name, value in
+            headerDictionary[name] = value
         }
-    }
-    
-    let formatter = DateFormatter()
-    formatter.dateFormat = "yyyy-MM-dd hh:mm:ss"
-    let requestData = formatter.string(from: Date())
-    
-    application.logger.log(level: .info, message: "[\(requestData)] \(method.uppercased()) \(path) --header \(header) --body \(body ?? "") \(response.statusCode)")
-    
-    do {
-        let data = try JSONSerialization.data(withJSONObject: output, options: [.prettyPrinted])
-        print(String(data: data, encoding: .utf8) ?? "")
-    } catch {
-        print("{\"statusCode: 500, \"headers\": {\"Content-Type\": \"text/plain\"}, body: \"\(error)\"")
+        
+        var output: [String: Any] = [
+            "statusCode": response.status.code,
+            "headers": headerDictionary,
+            "body": String(data: response.body.asData(), encoding: .utf8) ?? ""
+        ]
+        
+        if let contentType = response.contentType {
+            switch (contentType.type, contentType.subtype) {
+            case ("image", _), ("application", "x-protobuf"), ("application", "x-google-protobuf"), ("application", "octet-stream"):
+                output["isBase64Encoded"] = true
+            default:
+                break
+            }
+        }
+        
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd hh:mm:ss"
+        let requestData = formatter.string(from: Date())
+        
+        application.logger.log(level: .info, message: "[\(requestData)] \(method.value.uppercased()) \(path.value) --header \(decodedHeader) --body \(self.body.value ?? "") \(response.statusCode)")
+        
+        print("hexaville response format/json")
+        print("\t")
+        do {
+            let data = try JSONSerialization.data(withJSONObject: output, options: [.prettyPrinted])
+            print(String(data: data, encoding: .utf8) ?? "")
+        } catch {
+            print("{\"statusCode: 500, \"headers\": {\"Content-Type\": \"text/plain\"}, body: \"\(error)\"")
+        }
+        print("\t")
+        print("\t")
     }
 }
 
