@@ -77,8 +77,8 @@ private final class HTTPHandler: ChannelInboundHandler {
             self.infoSavedBodyBytes = 0
             self.state.requestReceived()
         case .body(var body):
-            bodyBuffer.writeBuffer(&body)
             infoSavedBodyBytes += body.readableBytes
+            bodyBuffer.writeBuffer(&body)
         case .end:
             self.state.requestComplete()
             let body = bodyBuffer.getData(at: 0, length: infoSavedBodyBytes)
